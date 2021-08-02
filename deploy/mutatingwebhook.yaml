@@ -5,7 +5,7 @@ metadata:
   labels:
     app: sidecar-injector
 webhooks:
-- name: sidecar-injector.morven.me
+- name: sidecar-injector.f5.demo
   clientConfig:
     service:
       name: sidecar-injector-webhook-svc
@@ -16,7 +16,7 @@ webhooks:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: [""]
     apiVersions: ["v1"]
-    resources: ["pods"]
+    resources: ["deployments"]
   namespaceSelector:
     matchLabels:
       sidecar-injection: enabled

@@ -13,6 +13,7 @@ import (
 	"k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -34,8 +35,8 @@ var ignoredNamespaces = []string{
 }
 
 const (
-	admissionWebhookAnnotationInjectKey = "sidecar-injector-webhook.morven.me/inject"
-	admissionWebhookAnnotationStatusKey = "sidecar-injector-webhook.morven.me/status"
+	admissionWebhookAnnotationInjectKey = "sidecar-injector-webhook.f5.demo/inject"
+	admissionWebhookAnnotationStatusKey = "sidecar-injector-webhook.f5.demo/status"
 )
 
 type WebhookServer struct {
@@ -194,12 +195,12 @@ func updateAnnotation(target map[string]string, added map[string]string) (patch 
 }
 
 // create mutation patch for resoures
-func createPatch(pod *corev1.Pod, sidecarConfig *Config, annotations map[string]string) ([]byte, error) {
+func createPatch(dc *appsv1.Deployment, sidecarConfig *Config, annotations map[string]string) ([]byte, error) {
 	var patch []patchOperation
 
-	patch = append(patch, addContainer(pod.Spec.Containers, sidecarConfig.Containers, "/spec/containers")...)
-	patch = append(patch, addVolume(pod.Spec.Volumes, sidecarConfig.Volumes, "/spec/volumes")...)
-	patch = append(patch, updateAnnotation(pod.Annotations, annotations)...)
+	patch = append(patch, addContainer(dc.Spec.Template.Spec.Containers, sidecarConfig.Containers, "/spec/template/spec/containers")...)
+	patch = append(patch, addVolume(dc.Spec.Template.Spec.Volumes, sidecarConfig.Volumes, "/spec/template/spec/volumes")...)
+	patch = append(patch, updateAnnotation(dc.Annotations, annotations)...)
 
 	return json.Marshal(patch)
 }
@@ -207,8 +208,8 @@ func createPatch(pod *corev1.Pod, sidecarConfig *Config, annotations map[string]
 // main mutation process
 func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	req := ar.Request
-	var pod corev1.Pod
-	if err := json.Unmarshal(req.Object.Raw, &pod); err != nil {
+	var dc appsv1.Deployment
+	if err := json.Unmarshal(req.Object.Raw, &dc); err != nil {
 		glog.Errorf("Could not unmarshal raw object: %v", err)
 		return &v1beta1.AdmissionResponse{
 			Result: &metav1.Status{
@@ -218,11 +219,11 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 	}
 
 	glog.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v",
-		req.Kind, req.Namespace, req.Name, pod.Name, req.UID, req.Operation, req.UserInfo)
+		req.Kind, req.Namespace, req.Name, dc.Name, req.UID, req.Operation, req.UserInfo)
 
 	// determine whether to perform mutation
-	if !mutationRequired(ignoredNamespaces, &pod.ObjectMeta) {
-		glog.Infof("Skipping mutation for %s/%s due to policy check", pod.Namespace, pod.Name)
+	if !mutationRequired(ignoredNamespaces, &dc.ObjectMeta) {
+		glog.Infof("Skipping mutation for %s/%s due to policy check", dc.Namespace, dc.Name)
 		return &v1beta1.AdmissionResponse{
 			Allowed: true,
 		}
@@ -231,7 +232,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 	// Workaround: https://github.com/kubernetes/kubernetes/issues/57982
 	applyDefaultsWorkaround(whsvr.sidecarConfig.Containers, whsvr.sidecarConfig.Volumes)
 	annotations := map[string]string{admissionWebhookAnnotationStatusKey: "injected"}
-	patchBytes, err := createPatch(&pod, whsvr.sidecarConfig, annotations)
+	patchBytes, err := createPatch(&dc, whsvr.sidecarConfig, annotations)
 	if err != nil {
 		return &v1beta1.AdmissionResponse{
 			Result: &metav1.Status{
