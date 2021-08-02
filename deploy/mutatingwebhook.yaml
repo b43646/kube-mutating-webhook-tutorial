@@ -14,8 +14,8 @@ webhooks:
     caBundle: ${CA_BUNDLE}
   rules:
   - operations: ["CREATE", "UPDATE"]
-    apiGroups: [""]
-    apiVersions: ["apps/v1"]
+    apiGroups: ["apps"]
+    apiVersions: ["v1"]
     resources: ["deployments"]
   namespaceSelector:
     matchLabels:
