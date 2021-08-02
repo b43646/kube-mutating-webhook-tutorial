@@ -24,6 +24,10 @@ admissionregistration.k8s.io/v1beta1
 
 > Note: In addition, the `MutatingAdmissionWebhook` and `ValidatingAdmissionWebhook` admission controllers should be added and listed in the correct order in the admission-control flag of kube-apiserver.
 
+```
+ - --enable-admission-plugins=NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook
+```
+
 ## Build
 
 1. Build binary
