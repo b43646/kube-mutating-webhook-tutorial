@@ -15,7 +15,7 @@ webhooks:
   rules:
   - operations: ["CREATE", "UPDATE"]
     apiGroups: [""]
-    apiVersions: ["v1"]
+    apiVersions: ["apps/v1"]
     resources: ["deployments"]
   namespaceSelector:
     matchLabels:
