@@ -50,7 +50,7 @@ admissionregistration.k8s.io/v1beta1
 
 > Note: log into the docker registry before pushing the image.
 
-忽略以上构建步骤，这里提供一个已经构建好的镜像:
+跳过以上构建步骤，这里提供一个已经构建好的镜像:
 
 docker pull quay.io/lren/sidecar-injector:v20210802b1
 
